@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Mood Map</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    #chart {
+      margin-top: 20px;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Music Mood Map</h1>
+  <textarea id="playlistInput" placeholder="Enter song titles, one per line"></textarea>
+  <button onclick="analyzePlaylist()">Analyze Mood</button>
+  
+  <p id="errorMessage" class="error"></p>
+  
+  <div class="result" id="result"></div>
+  <div id="chart"></div>
+
+  <script>
+    // Predefined happiness scores for known songs
+    const songMoodDatabase = {
+      "walking on sunshine": 98,
+      "mr blue sky": 95,
+      "cant stop the feeling": 97,
+      "good life": 92,
+      "i wanna dance with somebody": 96,
+      "happy": 100,
+      "best day of my life": 96,
+      "on top of the world": 94,
+      "uptown funk": 93,
+      "september": 97,
+    };
+
+    const moodKeywords = {
+      "happy": 90, "joy": 85, "love": 82, "excited": 88, "fun": 87,
+      "party": 90, "dance": 85, "sun": 80, "smile": 95, "good": 85,
+      "celebrate": 90, "upbeat": 88, "bright": 85, "cheerful": 90,
+      "chill": 60, "relax": 55, "melancholic": 40, "sad": 30, "cry": 25,
+      "alone": 35, "tears": 30, "breakup": 40, "lonely": 35
+    };
+
+    // Improved fuzzy matching function
+    const getClosestSongScore = (title) => {
+      const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9 ]/gi, '');
+
+      for (let key in songMoodDatabase) {
+        if (normalizedTitle.includes(key)) {
+          return songMoodDatabase[key];
+        }
+      }
+      return null; // If no match found, fallback to keyword analysis
+    };
+
+    // Smarter mood analysis function
+    const analyzeSongMood = (title) => {
+      let score = getClosestSongScore(title);
+      if (score !== null) return score; // Use database score if found
+
+      let moodScore = 50; // Default neutral
+      let boost = 0; // To increase score for multiple happy words
+
+      const words = title.toLowerCase().split(/\s+/); // Split into words
+      words.forEach(word => {
+        if (moodKeywords[word]) {
+          moodScore = Math.max(moodScore, moodKeywords[word]); // Use highest mood value found
+          boost += 5; // Small boost for additional positive words
+        }
+      });
+
+      return Math.min(moodScore + boost, 100); // Cap at 100
+    };
+
+    // Generate mood data
+    const generateMoodData = (playlist) => {
+      return playlist.map(song => ({
+        song,
+        happiness: analyzeSongMood(song)
+      }));
+    };
+
+    function analyzePlaylist() {
+      const playlistInput = document.getElementById("playlistInput").value;
+      const songTitles = playlistInput.split("\n").map(title => title.trim()).filter(title => title);
+
+      if (songTitles.length === 0) {
+        document.getElementById("errorMessage").innerText = "Please enter song titles, one per line.";
+        return;
+      }
+
+      const analyzedData = generateMoodData(songTitles);
+      const avgHappiness = analyzedData.reduce((sum, song) => sum + song.happiness, 0) / analyzedData.length;
+      
+      document.getElementById("errorMessage").innerText = "";
+      document.getElementById("result").innerText = `Happiness Score: ${avgHappiness.toFixed(1)} / 100`;
+
+      // Basic chart rendering (placeholder)
+      renderChart(analyzedData);
+    }
+
+    function renderChart(data) {
+      const chartDiv = document.getElementById('chart');
+      chartDiv.innerHTML = ''; // Clear previous chart
+
+      // Create a basic bar chart (you can use libraries like Chart.js or D3.js for more advanced features)
+      const canvas = document.createElement('canvas');
+      chartDiv.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      const labels = data.map(item => item.song);
+      const values = data.map(item => item.happiness);
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Happiness Score',
+            data: values,
+            backgroundColor: '#82ca9d',
+          }],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { min: 0, max: 100 }
+          }
+        }
+      });
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</body>
+</html>
